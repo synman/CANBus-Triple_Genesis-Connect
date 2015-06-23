@@ -16,6 +16,8 @@ System Info and EEPROM
 0x01 0x10 0x02   Print Bus 2 Debug to Serial
 0x01 0x10 0x03   Print Bus 3 Debug to Serial
 0x01 0x16        Reboot to bootloader
+0x01 0x20        Re-initialize GenesisConnect variables
+0x01 0x21        GenesisConnect heartbeat
 
 
 Send CAN Packet
@@ -46,7 +48,6 @@ Cmd  Function
 0x08  0x03 Exit pass through mode
 TODO: Implement this ^^^
 */
-
 
 // #define JSON_OUT
 
@@ -139,7 +140,6 @@ SerialCommand::SerialCommand( QueueArray<Message> *q )
   activeSerial = &Serial;
 
   lastBluetoothRX = 0;
-
 }
 
 void SerialCommand::tick()
@@ -177,34 +177,14 @@ void SerialCommand::commandHandler(byte* bytes, int length){}
 
 void SerialCommand::printMessageToSerial( Message msg )
 {
+   if( activeSerial == &Serial1) return;
+   
   // Bus Filter
-  byte flag;
-  flag = 0x1 << (msg.busId-1);
-  if( !(busLogEnabled & flag) ){
-    return;
-  }
-
-  #ifdef JSON_OUT
-    // Output to serial as json string
-    activeSerial->print(F("{\"packet\": {\"status\":\""));
-    activeSerial->print( msg.busStatus,HEX);
-    activeSerial->print(F("\",\"channel\":\""));
-    activeSerial->print( busses[msg.busId-1].name );
-    activeSerial->print(F("\",\"length\":\""));
-    activeSerial->print(msg.length,HEX);
-    activeSerial->print(F("\",\"id\":\""));
-    activeSerial->print(msg.frame_id,HEX);
-    activeSerial->print(F("\",\"timestamp\":\""));
-    activeSerial->print(millis(),DEC);
-    activeSerial->print(F("\",\"payload\":[\""));
-    for (int i=0; i<8; i++) {
-      activeSerial->print(msg.frame_data[i],HEX);
-      if( i<7 ) activeSerial->print(F("\",\""));
+    byte flag;
+    flag = 0x1 << (msg.busId-1);
+    if( !(busLogEnabled & flag) ){
+      return;
     }
-    activeSerial->print(F("\"]}}"));
-    activeSerial->println();
-
-  #else
 
     // Bluetooth rate limiting
     if( activeSerial == &Serial1 && btRateLimit() ) return;
@@ -220,9 +200,6 @@ void SerialCommand::printMessageToSerial( Message msg )
     activeSerial->write( msg.length );
     activeSerial->write( msg.busStatus );
     activeSerial->write( NEWLINE );
-
-  #endif
-
 }
 
 
@@ -302,7 +279,14 @@ void SerialCommand::settingsCall()
     break;
     case 0x16:
       resetToBootloader();
-    break;
+      break;
+    case 0x20:
+      GenesisConnect::reset();
+      break;
+    case 0x21:
+      delay(BT_SEND_DELAY);
+      activeSerial->print("rdy");
+      break;
   }
 
 }
@@ -607,12 +591,11 @@ void SerialCommand::btDelay(){
 
 bool SerialCommand::btRateLimit(){
 
-  if( millis() > lastBluetoothRX + 50 ){
+  if( millis() > lastBluetoothRX + 10 ){
     lastBluetoothRX = millis();
     return false;
   }else
     return true;
-  
 }
 
 

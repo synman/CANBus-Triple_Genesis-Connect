@@ -3,6 +3,9 @@
 *  The Car Hacking Platform
 *  https://canb.us
 *  https://github.com/CANBus-Triple
+*
+* 2015 Hyundai Genesis Coupe customizations
+* 6/22/2015 - Shell M. Shrader
 */
 
 #include <avr/wdt.h>
@@ -20,7 +23,6 @@
 #endif
 // #define SLEEP_ENABLE
 
-
 CANBus CANBus1(CAN1SELECT, CAN1RESET, 1, "Bus 1");
 CANBus CANBus2(CAN2SELECT, CAN2RESET, 2, "Bus 2");
 CANBus CANBus3(CAN3SELECT, CAN3RESET, 3, "Bus 3");
@@ -28,34 +30,38 @@ CANBus busses[] = { CANBus1, CANBus2, CANBus3 };
 
 #include "Settings.h"
 #include "AutoBaud.h"
+#include "GenesisConnect.h"
 #include "SerialCommand.h"
-#include "ServiceCall.h"
-#include "ChannelSwap.h"
-#include "Naptime.h"
-
 
 byte rx_status;
 QueueArray<Message> readQueue;
 QueueArray<Message> writeQueue;
 
-
+int GenesisConnect::powerOn;
+unsigned long GenesisConnect::lastDisp;
+int GenesisConnect::volume;
+int GenesisConnect::mute;
+unsigned long GenesisConnect::lastMute;
+int GenesisConnect::thermostat;
+int GenesisConnect::minute;
+int GenesisConnect::outsideTemp;
+int GenesisConnect::bluetooth;
+int GenesisConnect::vents;
+int GenesisConnect::airflow;
+int GenesisConnect::compressor;
+int GenesisConnect::audioSource;
 /*
 *  Middleware Setup
 *  http://docs.canb.us/firmware/main.html
 */
 SerialCommand *serialCommand = new SerialCommand( &writeQueue );
-ServiceCall *serviceCall = new ServiceCall( &writeQueue );
+GenesisConnect *genesisConnect = new GenesisConnect(&writeQueue);
 
 Middleware *activeMiddleware[] = {
   serialCommand,
-  // new ChannelSwap(),
-  // serviceCall,
-  #ifdef SLEEP_ENABLE
-  new Naptime(0x0472, serialCommand),
-  #endif
+  genesisConnect
 };
 int activeMiddlewareLength = (int)( sizeof(activeMiddleware) / sizeof(activeMiddleware[0]) );
-
 
 void setup(){
 
@@ -65,8 +71,6 @@ void setup(){
   /*
   *  Middleware Settings
   */
-  serviceCall->setFilterPids();
-
 
   Serial.begin( 115200 ); // USB
   Serial1.begin( 57600 ); // UART
@@ -108,7 +112,7 @@ void setup(){
   // Setup CAN Busses
   CANBus1.begin();
   CANBus1.setClkPre(1);
-  CANBus1.baudConfig(cbt_settings.busCfg[0].baud);
+  CANBus1.baudConfig(100);
   CANBus1.setRxInt(true);
   CANBus1.bitModify(RXB0CTRL, 0x04, 0x04); // Set buffer rollover enabled
   CANBus1.bitModify(CNF2, 0x20, 0x20); // Enable wake-up filter
@@ -140,8 +144,6 @@ void setup(){
     digitalWrite( BOOT_LED, LOW );
     delay(50);
   }
-
-  // wdt_enable(WDTO_1S);
 
 }
 
@@ -192,10 +194,6 @@ void loop() {
     }
 
   }
-
-
-  // Pet the dog
-  // wdt_reset();
 
 } // End loop()
 
