@@ -50,6 +50,9 @@ int GenesisConnect::vents;
 int GenesisConnect::airflow;
 int GenesisConnect::compressor;
 int GenesisConnect::audioSource;
+int GenesisConnect::radioStation;
+int GenesisConnect::radioBand;
+
 /*
 *  Middleware Setup
 *  http://docs.canb.us/firmware/main.html

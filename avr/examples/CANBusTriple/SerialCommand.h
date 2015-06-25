@@ -17,8 +17,6 @@ System Info and EEPROM
 0x01 0x10 0x03   Print Bus 3 Debug to Serial
 0x01 0x16        Reboot to bootloader
 0x01 0x20        Re-initialize GenesisConnect variables
-0x01 0x21        GenesisConnect heartbeat
-
 
 Send CAN Packet
 ---------------
@@ -282,10 +280,6 @@ void SerialCommand::settingsCall()
       break;
     case 0x20:
       GenesisConnect::reset();
-      break;
-    case 0x21:
-      delay(BT_SEND_DELAY);
-      activeSerial->print("rdy");
       break;
   }
 

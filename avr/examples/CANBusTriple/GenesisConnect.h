@@ -20,6 +20,8 @@ class GenesisConnect : public Middleware {
     static void reset();
   private:
     QueueArray<Message>* mainQueue;
+    unsigned long lastTime;
+    unsigned long lastTemp;
     static int powerOn;
     static unsigned long lastDisp;
     static int volume;
@@ -33,15 +35,21 @@ class GenesisConnect : public Middleware {
     static int airflow;
     static int compressor;
     static int audioSource;
+    static int radioStation;
+    static int radioBand;
 };
 
 GenesisConnect::GenesisConnect( QueueArray<Message> *q ) {
   mainQueue = q;
+  
+  lastTime = millis();
+  lastTemp = lastTime;
 
   // Default Instance Properties
   activeSerial = &Serial;
   
   // other initializations
+  lastTime = 0;
   reset();
 }
 
@@ -56,6 +64,7 @@ void GenesisConnect::tick() {
 }
 
 void GenesisConnect::GenesisConnect::reset() {
+
   GenesisConnect::lastDisp = 0;
   GenesisConnect::lastMute = 0;
   GenesisConnect::powerOn = -1;
@@ -69,6 +78,8 @@ void GenesisConnect::GenesisConnect::reset() {
   GenesisConnect::airflow = -1;
   GenesisConnect::compressor = -1;
   GenesisConnect::audioSource = -1;
+  GenesisConnect::radioStation = -1;
+  GenesisConnect::radioBand = -1;
 }
 
 Message GenesisConnect::process( Message msg ) {
@@ -76,13 +87,17 @@ Message GenesisConnect::process( Message msg ) {
   // bail if not BTLE
   if (activeSerial == &Serial) return msg;
   
-  // 0x28 == disp button
-  if (msg.frame_id == 0x28 && GenesisConnect::lastDisp + 1000 < millis()) {
+  // 0x28 == disp button and bass, midrange, treble, fader, balance
+  if (msg.frame_id == 0x28) {
     delay(BT_SEND_DELAY);
     activeSerial->write(0x7C);
     activeSerial->write(0x7C);
     activeSerial->write(0x28);
-    activeSerial->write(0x01);
+    activeSerial->write(msg.frame_data[1]);
+    activeSerial->write(msg.frame_data[2]);
+    activeSerial->write(msg.frame_data[3]);
+    activeSerial->write(msg.frame_data[4]);
+    activeSerial->write(msg.frame_data[5]);
     GenesisConnect::lastDisp = millis();
     return msg;
   }
@@ -99,18 +114,26 @@ Message GenesisConnect::process( Message msg ) {
   }
   
   if (msg.frame_id == 0x10A) {
-    // 0x10A - volume and source 2=RADIO 10=XM A0=USB 51=BT
-    if ((msg.frame_data[1] == 0x10 && (GenesisConnect::volume != msg.frame_data[2]) || GenesisConnect::audioSource != msg.frame_data[0])) {
+    // 0x10A - volume, source 2=RADIO 10=XM A0=USB 51=BT, radio station, radio band
+    if ((msg.frame_data[1] == 0x10 && (GenesisConnect::volume != msg.frame_data[2]) || 
+                                       GenesisConnect::audioSource != msg.frame_data[0] ||
+                                       GenesisConnect::radioStation != msg.frame_data[4] ||
+                                       GenesisConnect::radioBand != msg.frame_data[5])) {
       delay(BT_SEND_DELAY);
       activeSerial->write(0x7C);
       activeSerial->write(0x7C);
       activeSerial->write(0x11);
       activeSerial->write(msg.frame_data[2]);
       activeSerial->write(msg.frame_data[0]);
+      activeSerial->write(msg.frame_data[4]);
+      activeSerial->write(msg.frame_data[5]);
       GenesisConnect::volume = msg.frame_data[2];
       GenesisConnect::audioSource = msg.frame_data[0];
+      GenesisConnect::radioStation = msg.frame_data[4];
+      GenesisConnect::radioBand = msg.frame_data[5];
       return msg; 
-    }    
+    }  
+    
     // 0x10A - mute
     if (msg.frame_data[1] == 0x44 && GenesisConnect::mute != msg.frame_data[1]) {
       delay(BT_SEND_DELAY);
@@ -121,7 +144,8 @@ Message GenesisConnect::process( Message msg ) {
       GenesisConnect::lastMute = millis();
       GenesisConnect::mute = msg.frame_data[1];
       return msg;
-    }    
+    }  
+    
     // 0x10A - unmute
     if (msg.frame_data[1] == 0x00 && GenesisConnect::lastMute + 500 < millis() && GenesisConnect::mute != msg.frame_data[1]) {
       delay(BT_SEND_DELAY);
@@ -147,7 +171,7 @@ Message GenesisConnect::process( Message msg ) {
   }    
   
   //0x502 - time of day
-  if (msg.frame_id == 0x502 && msg.frame_data[1] != GenesisConnect::minute) {
+  if (msg.frame_id == 0x502 && lastTime + 2000 < millis()) {
     delay(BT_SEND_DELAY);
     activeSerial->write(0x7C);
     activeSerial->write(0x7C);
@@ -155,17 +179,19 @@ Message GenesisConnect::process( Message msg ) {
     activeSerial->write(msg.frame_data[0]);
     activeSerial->write(msg.frame_data[1]);
     GenesisConnect::minute = msg.frame_data[1];
+    lastTime = millis();
     return msg;
   }
 
   //0x531 - outside temperature
-  if (msg.frame_id == 0x531 && msg.frame_data[2] != GenesisConnect::outsideTemp) {
+  if (msg.frame_id == 0x531 && lastTemp + 5000 < millis()) {
     delay(BT_SEND_DELAY);
     activeSerial->write(0x7C);
     activeSerial->write(0x7C);
     activeSerial->write(0x15);
     activeSerial->write(msg.frame_data[2]);
     GenesisConnect::outsideTemp = msg.frame_data[2];
+    lastTemp = millis();
     return msg;
   }
   
