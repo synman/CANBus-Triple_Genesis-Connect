@@ -48,8 +48,7 @@ GenesisConnect::GenesisConnect( QueueArray<Message> *q ) {
   // Default Instance Properties
   activeSerial = &Serial;
   
-  // other initializations
-  lastTime = 0;
+  // other (static) initializations
   reset();
 }
 
