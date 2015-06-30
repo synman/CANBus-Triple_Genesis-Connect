@@ -37,6 +37,9 @@ class GenesisConnect : public Middleware {
     static int audioSource;
     static int radioStation;
     static int radioBand;
+    static int radioPreset;
+    static int fmStereo;
+    static int xmBand;
 };
 
 GenesisConnect::GenesisConnect( QueueArray<Message> *q ) {
@@ -79,6 +82,9 @@ void GenesisConnect::GenesisConnect::reset() {
   GenesisConnect::audioSource = -1;
   GenesisConnect::radioStation = -1;
   GenesisConnect::radioBand = -1;
+  GenesisConnect::radioPreset = -1;
+  GenesisConnect::fmStereo = -1;
+  GenesisConnect::xmBand = -1;
 }
 
 Message GenesisConnect::process( Message msg ) {
@@ -226,6 +232,31 @@ Message GenesisConnect::process( Message msg ) {
     return msg;
   }
   
+  // 0x107 AM/FM 10=P1 20=P2 0 0 1=STEREO
+  if (msg.frame_id = 0x107 && (msg.frame_data[0] != GenesisConnect::radioPreset ||
+                               msg.frame_data[3] != GenesisConnect::fmStereo)) {                
+    delay(BT_SEND_DELAY);
+    activeSerial->write(0x7C);
+    activeSerial->write(0x7C);
+    activeSerial->write(0x18);
+    activeSerial->write(msg.frame_data[0]);
+    activeSerial->write(msg.frame_data[3]);
+    GenesisConnect::radioPreset = msg.frame_data[0];
+    GenesisConnect::fmStereo = msg.frame_data[3];
+    return msg;
+  } 
+                               
+  // 10B XM 0 0 0 0 0 1=XM1 2=XM2 3=XM3 0 0
+  if (msg.frame_id = 0x10B && msg.frame_data[5] != GenesisConnect::xmBand) {                
+    delay(BT_SEND_DELAY);
+    activeSerial->write(0x7C);
+    activeSerial->write(0x7C);
+    activeSerial->write(0x19);
+    activeSerial->write(msg.frame_data[5]);
+    GenesisConnect::xmBand = msg.frame_data[5];
+    return msg;
+  } 
+                               
   return msg;
 }
 

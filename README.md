@@ -7,7 +7,7 @@
 See [CANBus Triple](http://www.canb.us) for more information, or to purchase hardware.
 
 ## About
-This repository contains the base firmware and libraries for the CANBus Triple. 
+This repository contains Shell M. Shrader's modifications to the base CBT firmware and libraries for the CANBus Triple to support Genesis Connect, an Android based LCD replacement for Hyundai Genesis Coupes. 
 
 [MCP2515 Library](https://github.com/CANBus-Triple/CANBus-Triple/tree/master/avr/libraries/CANBus/src) | [Examples](https://github.com/CANBus-Triple/CANBus-Triple/tree/master/avr/examples)
 
