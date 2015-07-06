@@ -52,9 +52,6 @@ int GenesisConnect::compressor;
 int GenesisConnect::audioSource;
 int GenesisConnect::radioStation;
 int GenesisConnect::radioBand;
-int GenesisConnect::radioPreset;
-int GenesisConnect::fmStereo;
-int GenesisConnect::xmBand;
 
 /*
 *  Middleware Setup
