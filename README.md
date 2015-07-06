@@ -23,7 +23,7 @@ Clone this repo / download to your Arduino [Sketchbook](http://arduino.cc/en/gui
 
 To clone:
 
-``git clone https://github.com/CANBus-Triple/CANBus-Triple.git``
+``git clone https://github.com/synman/CANBus-Triple_Genesis-Connect.git``
 
  Or download the zip and extract it to your sketchbook folder.
  
